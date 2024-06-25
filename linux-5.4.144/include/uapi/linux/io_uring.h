@@ -35,6 +35,8 @@ struct io_uring_sqe {
 		__u16	buf_index;	/* index into fixed buffers, if used */
 		__u64	__pad2[3];
 	};
+
+	__u32  added_info;     // @wbl added info
 };
 
 /*
