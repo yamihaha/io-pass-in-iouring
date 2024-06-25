@@ -2,7 +2,7 @@
 VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 144
-EXTRAVERSION = -remake-02
+EXTRAVERSION = -remake-03
 NAME = Kleptomaniac Octopus
 
 # *DOCUMENTATION*

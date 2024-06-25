@@ -721,6 +721,10 @@ static inline blk_status_t nvme_setup_rw(struct nvme_ns *ns,
 	cmnd->rw.slba = cpu_to_le64(nvme_sect_to_lba(ns, blk_rq_pos(req)));
 	cmnd->rw.length = cpu_to_le16((blk_rq_bytes(req) >> ns->lba_shift) - 1);
 
+	// @wbl  added info
+	// 将 added_info 放到了 resvd2 的保留字段中
+	cmnd->rw.rsvd2 = (__u64)req->bio->added_info; 
+
 	if (req_op(req) == REQ_OP_WRITE && ctrl->nr_streams)
 		nvme_assign_write_stream(ctrl, req, &control, &dsmgmt);
 
