@@ -357,6 +357,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 	blk_qc_t qc = BLK_QC_T_NONE;
 	int ret = 0;
 
+
 	if ((pos | iov_iter_alignment(iter)) &
 	    (bdev_logical_block_size(bdev) - 1))
 		return -EINVAL;
@@ -392,6 +393,9 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 		bio->bi_ioprio = iocb->ki_ioprio;
 
 		bio_added_info(bio,iocb);          // @wbl bio <- iocb
+
+		printk("---------------------------- 3 struct kiocb->added_info : %d\n",iocb->added_info);
+		printk("---------------------------- 3 struct bio->added_info : %d\n",bio->added_info);
 
 		ret = bio_iov_iter_get_pages(bio, iter);
 		if (unlikely(ret)) {
@@ -478,6 +482,8 @@ static ssize_t
 blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 {
 	int nr_pages;
+
+	printk("----------blkdev_direct_IO\n");
 
 	nr_pages = iov_iter_npages(iter, BIO_MAX_PAGES + 1);
 	if (!nr_pages)
@@ -2038,6 +2044,8 @@ ssize_t blkdev_read_iter(struct kiocb *iocb, struct iov_iter *to)
 	size_t shorted = 0;
 	ssize_t ret;
 
+	// printk("---------------blkdev_read_iter\n");
+
 	if (pos >= size)
 		return 0;
 
@@ -2081,7 +2089,7 @@ static const struct address_space_operations def_blk_aops = {
 	.write_end	= blkdev_write_end,
 	.writepages	= blkdev_writepages,
 	.releasepage	= blkdev_releasepage,
-	.direct_IO	= blkdev_direct_IO,
+	.direct_IO	= blkdev_direct_IO,             // 是个简写写法，完整为 def_blk_aops.direct_IO = blkdev_direct_IO;
 	.migratepage	= buffer_migrate_page_norefs,
 	.is_dirty_writeback = buffer_check_dirty_writeback,
 };

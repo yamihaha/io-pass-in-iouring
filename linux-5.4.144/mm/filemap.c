@@ -2295,14 +2295,20 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 	size_t count = iov_iter_count(iter);
 	ssize_t retval = 0;
 
+	// printk("----------generic_file_read_iter\n");
+
 	if (!count)
 		goto out; /* skip atime */
+
+	// printk("---------- 1\n");
 
 	if (iocb->ki_flags & IOCB_DIRECT) {
 		struct file *file = iocb->ki_filp;
 		struct address_space *mapping = file->f_mapping;
 		struct inode *inode = mapping->host;
 		loff_t size;
+
+		printk("---------- 2\n");
 
 		size = i_size_read(inode);
 		if (iocb->ki_flags & IOCB_NOWAIT) {
@@ -2319,7 +2325,9 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
 
 		file_accessed(file);
 
-		retval = mapping->a_ops->direct_IO(iocb, iter);
+		printk("---------- 3\n");
+
+		retval = mapping->a_ops->direct_IO(iocb, iter);           // key func
 		if (retval >= 0) {
 			iocb->ki_pos += retval;
 			count -= retval;

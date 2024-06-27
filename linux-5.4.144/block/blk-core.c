@@ -1147,6 +1147,8 @@ blk_qc_t submit_bio(struct bio *bio)
 	unsigned long pflags;
 	blk_qc_t ret;
 
+	// printk("-------------submit_bio\n");
+
 	if (blkcg_punt_bio_submit(bio))
 		return BLK_QC_T_NONE;
 
@@ -1190,7 +1192,7 @@ blk_qc_t submit_bio(struct bio *bio)
 	if (workingset_read)
 		psi_memstall_enter(&pflags);
 
-	ret = generic_make_request(bio);
+	ret = generic_make_request(bio);          // key func
 
 	if (workingset_read)
 		psi_memstall_leave(&pflags);

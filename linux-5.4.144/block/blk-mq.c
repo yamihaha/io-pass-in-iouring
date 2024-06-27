@@ -2012,7 +2012,10 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 
 	cookie = request_to_qc_t(data.hctx, rq);
 
-	blk_mq_bio_to_request(rq, bio, nr_segs);
+	blk_mq_bio_to_request(rq, bio, nr_segs);        // bio -> request
+
+	// printk("---------------------------- 4 struct bio->added_info : %d\n",bio->added_info);
+	// printk("---------------------------- 4 struct rq->bio->added_info : %d\n",rq->bio->added_info);
 
 	plug = blk_mq_plug(q, bio);
 	if (unlikely(is_flush_fua)) {
@@ -2065,7 +2068,7 @@ static blk_qc_t blk_mq_make_request(struct request_queue *q, struct bio *bio)
 		if (same_queue_rq) {
 			data.hctx = same_queue_rq->mq_hctx;
 			trace_block_unplug(q, 1, true);
-			blk_mq_try_issue_directly(data.hctx, same_queue_rq,
+			blk_mq_try_issue_directly(data.hctx, same_queue_rq,               // key func
 					&cookie);
 		}
 	} else if ((q->nr_hw_queues > 1 && is_sync) ||

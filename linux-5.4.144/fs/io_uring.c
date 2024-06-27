@@ -1127,6 +1127,11 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 	// @wbl kiocb <- io_kiocb
 	kiocb->added_info = READ_ONCE(sqe->added_info);  
 
+	printk("---------------------------- 2 struct sqe->added_info : %d\n",sqe->added_info);
+	printk("---------------------------- 2 struct kiocb->added_info : %d\n",kiocb->added_info);
+
+	printk("ki_flags : %d\n",IOCB_DIRECT & kiocb->ki_flags);
+
 	ioprio = READ_ONCE(sqe->ioprio);
 	if (ioprio) {
 		ret = ioprio_check_cap(ioprio);
@@ -1416,6 +1421,8 @@ static int io_read(struct io_kiocb *req, const struct sqe_submit *s,
 	size_t iov_count;
 	ssize_t read_size, ret;
 
+	printk("--------------io_read\n");
+
 	ret = io_prep_rw(req, s, force_nonblock);
 	if (ret)
 		return ret;
@@ -1438,7 +1445,7 @@ static int io_read(struct io_kiocb *req, const struct sqe_submit *s,
 		ssize_t ret2;
 
 		if (file->f_op->read_iter)
-			ret2 = call_read_iter(file, kiocb, &iter);
+			ret2 = call_read_iter(file, kiocb, &iter);        // key func    调用 blkdev_read_iter
 		else if (req->file->f_op->read)
 			ret2 = loop_rw_iter(READ, file, kiocb, &iter);
 		else

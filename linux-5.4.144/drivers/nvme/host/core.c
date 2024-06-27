@@ -725,6 +725,9 @@ static inline blk_status_t nvme_setup_rw(struct nvme_ns *ns,
 	// 将 added_info 放到了 resvd2 的保留字段中
 	cmnd->rw.rsvd2 = (__u64)req->bio->added_info; 
 
+	printk("---------------------------- 5 struct req->bio->added_info : %d\n",req->bio->added_info);
+	printk("---------------------------- 5 struct cmnd->rw.rsvd2 : %d\n",(int)cmnd->rw.rsvd2);
+
 	if (req_op(req) == REQ_OP_WRITE && ctrl->nr_streams)
 		nvme_assign_write_stream(ctrl, req, &control, &dsmgmt);
 
@@ -778,6 +781,17 @@ blk_status_t nvme_setup_cmd(struct nvme_ns *ns, struct request *req,
 {
 	blk_status_t ret = BLK_STS_OK;
 
+	// @wbl  added info
+	// 将 added_info 放到了 resvd2 的保留字段中
+	// cmd->rw.rsvd2 = (__u64)req->bio->added_info;
+
+	printk("apple\n");
+	// printk("apple: %d",req_op(req));
+
+	if(req_op(req)){
+		printk("---apple\n");
+	}
+
 	nvme_clear_nvme_request(req);
 
 	memset(cmd, 0, sizeof(*cmd));
@@ -797,12 +811,19 @@ blk_status_t nvme_setup_cmd(struct nvme_ns *ns, struct request *req,
 		break;
 	case REQ_OP_READ:
 	case REQ_OP_WRITE:
-		ret = nvme_setup_rw(ns, req, cmd);
+		ret = nvme_setup_rw(ns, req, cmd);             // key func
 		break;
 	default:
 		WARN_ON_ONCE(1);
 		return BLK_STS_IOERR;
 	}
+
+	/*
+	if(req->bio->added_info == 29){
+		printk("---------------------------- 5 struct req->bio->added_info : %d\n",req->bio->added_info);
+		printk("---------------------------- 5 struct kiocb->added_info : %d\n",(int)cmd->rw.rsvd2);
+	}
+	*/
 
 	cmd->common.command_id = req->tag;
 	trace_nvme_setup_cmd(req, cmd);

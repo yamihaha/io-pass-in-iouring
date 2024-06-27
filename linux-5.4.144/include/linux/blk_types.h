@@ -193,14 +193,14 @@ struct bio {
 
 	struct bio_set		*bi_pool;
 
+	__u32   added_info;        // @wbl  added info
+
 	/*
 	 * We can inline a number of vecs at the end of the bio, to avoid
 	 * double allocations for a small number of bio_vecs. This member
 	 * MUST obviously be kept at the very end of the bio.
 	 */
-	struct bio_vec		bi_inline_vecs[0];
-
-	__u32   added_info;        // @wbl  added info
+	struct bio_vec		bi_inline_vecs[0];            // 动态长度的数组，必须放在结构体的末尾 ！！！
 };
 
 #define BIO_RESET_BYTES		offsetof(struct bio, bi_max_vecs)
