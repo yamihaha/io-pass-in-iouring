@@ -157,7 +157,7 @@ struct bio {
 	struct bvec_iter	bi_iter;
 
 	atomic_t		__bi_remaining;
-	bio_end_io_t		*bi_end_io;
+	bio_end_io_t		*bi_end_io;           // 回调函数
 
 	void			*bi_private;
 #ifdef CONFIG_BLK_CGROUP
@@ -194,6 +194,8 @@ struct bio {
 	struct bio_set		*bi_pool;
 
 	__u32   added_info;        // @wbl  added info
+
+	__u32   back_info;         // @wbl  back info
 
 	/*
 	 * We can inline a number of vecs at the end of the bio, to avoid

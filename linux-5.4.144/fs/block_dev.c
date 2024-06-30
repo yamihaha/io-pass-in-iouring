@@ -311,6 +311,10 @@ static void blkdev_bio_end_io(struct bio *bio)
 			struct kiocb *iocb = dio->iocb;
 			ssize_t ret;
 
+			iocb->back_info = bio->back_info;        // @wbl   bio -> kiocb
+
+			printk("-------------iocb->back_info: %d\n",iocb->back_info);
+
 			if (likely(!dio->bio.bi_status)) {
 				ret = dio->size;
 				iocb->ki_pos += ret;
@@ -389,7 +393,7 @@ __blkdev_direct_IO(struct kiocb *iocb, struct iov_iter *iter, int nr_pages)
 		bio->bi_iter.bi_sector = pos >> 9;
 		bio->bi_write_hint = iocb->ki_hint;
 		bio->bi_private = dio;
-		bio->bi_end_io = blkdev_bio_end_io;
+		bio->bi_end_io = blkdev_bio_end_io;         // 回调函数
 		bio->bi_ioprio = iocb->ki_ioprio;
 
 		bio_added_info(bio,iocb);          // @wbl bio <- iocb

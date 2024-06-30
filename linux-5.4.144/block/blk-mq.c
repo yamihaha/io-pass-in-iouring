@@ -565,7 +565,7 @@ EXPORT_SYMBOL(__blk_mq_end_request);
 
 void blk_mq_end_request(struct request *rq, blk_status_t error)
 {
-	if (blk_update_request(rq, error, blk_rq_bytes(rq)))
+	if (blk_update_request(rq, error, blk_rq_bytes(rq)))       // key func
 		BUG();
 	__blk_mq_end_request(rq, error);
 }
@@ -1904,11 +1904,11 @@ static void blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 
 	hctx_lock(hctx, &srcu_idx);
 
-	ret = __blk_mq_try_issue_directly(hctx, rq, cookie, false, true);
+	ret = __blk_mq_try_issue_directly(hctx, rq, cookie, false, true);        // key func
 	if (ret == BLK_STS_RESOURCE || ret == BLK_STS_DEV_RESOURCE)
 		blk_mq_request_bypass_insert(rq, false, true);
 	else if (ret != BLK_STS_OK)
-		blk_mq_end_request(rq, ret);
+		blk_mq_end_request(rq, ret);         // key func for back_info
 
 	hctx_unlock(hctx, srcu_idx);
 }
@@ -2935,7 +2935,7 @@ struct request_queue *blk_mq_init_allocated_queue(struct blk_mq_tag_set *set,
 	INIT_LIST_HEAD(&q->requeue_list);
 	spin_lock_init(&q->requeue_lock);
 
-	blk_queue_make_request(q, blk_mq_make_request);
+	blk_queue_make_request(q, blk_mq_make_request);        // q->make_request_fn = blk_mq_make_request
 
 	/*
 	 * Do this after blk_queue_make_request() overrides it...

@@ -998,7 +998,7 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 		return;
 	}
 
-	req = blk_mq_tag_to_rq(nvme_queue_tagset(nvmeq), cqe->command_id);
+	req = blk_mq_tag_to_rq(nvme_queue_tagset(nvmeq), cqe->command_id);     // 找到 cqe 对应的 req
 	if (unlikely(!req)) {
 		dev_warn(nvmeq->dev->ctrl.device,
 			"invalid id %d completed on queue %d\n",
@@ -1006,8 +1006,12 @@ static inline void nvme_handle_cqe(struct nvme_queue *nvmeq, u16 idx)
 		return;
 	}
 
+	req->back_info = (int)(cqe->result.u64 >> 32);      // @wbl   cqe -> bio
+
+	// printk("-----------(int)(cqe->result.u64 >> 32) : %d\n",(int)(cqe->result.u64 >> 32));
+
 	trace_nvme_sq(req, cqe->sq_head, nvmeq->sq_tail);
-	nvme_end_request(req, cqe->status, cqe->result);
+	nvme_end_request(req, cqe->status, cqe->result);        // key func
 }
 
 static void nvme_complete_cqes(struct nvme_queue *nvmeq, u16 start, u16 end)

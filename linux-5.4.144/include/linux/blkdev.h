@@ -242,8 +242,10 @@ struct request {
 	/*
 	 * completion callback.
 	 */
-	rq_end_io_fn *end_io;
+	rq_end_io_fn *end_io;           // 回调函数
 	void *end_io_data;
+
+	__u32   back_info;         // @wbl  back info
 };
 
 static inline bool blk_op_is_scsi(unsigned int op)

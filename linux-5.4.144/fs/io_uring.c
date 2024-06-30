@@ -977,6 +977,10 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
+	req->user_data = kiocb->back_info;       // @wbl    kiocb -> io_kiocb
+
+	printk("------------req(io_kiocb)->user_data: %d\n",(int)req->user_data);
+
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
 
@@ -989,6 +993,8 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 static void io_complete_rw_iopoll(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
+
+	// req->user_data = kiocb->back_info;       // @wbl    kiocb -> io_kiocb
 
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
@@ -1160,12 +1166,17 @@ static int io_prep_rw(struct io_kiocb *req, const struct sqe_submit *s,
 			return -EOPNOTSUPP;
 
 		kiocb->ki_flags |= IOCB_HIPRI;
-		kiocb->ki_complete = io_complete_rw_iopoll;
+		kiocb->ki_complete = io_complete_rw_iopoll;           // 回调函数
+
+		// printk("-------------kiocb->ki_complete = io_complete_rw_iopoll\n");
+
 		req->result = 0;
 	} else {
 		if (kiocb->ki_flags & IOCB_HIPRI)
 			return -EINVAL;
 		kiocb->ki_complete = io_complete_rw;
+
+		// printk("-------------kiocb->ki_complete = io_complete_rw\n");
 	}
 	return 0;
 }
@@ -1187,7 +1198,7 @@ static inline void io_rw_done(struct kiocb *kiocb, ssize_t ret)
 		ret = -EINTR;
 		/* fall through */
 	default:
-		kiocb->ki_complete(kiocb, ret, 0);
+		kiocb->ki_complete(kiocb, ret, 0);            // 调用 io_complete_rw_iopoll
 	}
 }
 
