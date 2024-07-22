@@ -77,6 +77,8 @@
 
 #include "internal.h"
 
+#include <linux/time.h>
+
 #define IORING_MAX_ENTRIES	32768
 #define IORING_MAX_FIXED_FILES	1024
 
@@ -347,6 +349,9 @@ struct io_kiocb {
 	struct work_struct	work;
 	struct task_struct	*work_task;
 	struct list_head	task_list;
+
+	struct timespec    start_time;
+	struct timespec    end_time;
 };
 
 #define IO_PLUG_THRESHOLD		2
@@ -583,7 +588,7 @@ static struct io_uring_cqe *io_get_cqring(struct io_ring_ctx *ctx)
 	if (tail - READ_ONCE(rings->cq.head) == rings->cq_ring_entries)
 		return NULL;
 
-	ctx->cached_cq_tail++;
+	ctx->cached_cq_tail++;            // 更新 CQ tail
 	return &rings->cqes[tail & ctx->cq_mask];
 }
 
@@ -597,7 +602,7 @@ static void io_cqring_fill_event(struct io_ring_ctx *ctx, u64 ki_user_data,
 	 * submission (by quite a lot). Increment the overflow count in
 	 * the ring.
 	 */
-	cqe = io_get_cqring(ctx);
+	cqe = io_get_cqring(ctx);            // 返回一个空的 cqe 表项, 并 ctx->cached_cq_tail ++;
 	if (cqe) {
 		WRITE_ONCE(cqe->user_data, ki_user_data);
 		WRITE_ONCE(cqe->res, res);
@@ -618,14 +623,14 @@ static void io_cqring_ev_posted(struct io_ring_ctx *ctx)
 		eventfd_signal(ctx->cq_ev_fd, 1);
 }
 
-static void io_cqring_add_event(struct io_ring_ctx *ctx, u64 user_data,
-				long res)
+static void io_cqring_add_event(struct io_ring_ctx *ctx, u64 user_data,           
+				long res)                            // 向 CQ 中放入一个 cqe ，并更新 cq_tail
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&ctx->completion_lock, flags);
-	io_cqring_fill_event(ctx, user_data, res);
-	io_commit_cqring(ctx);
+	io_cqring_fill_event(ctx, user_data, res);       // 填充一个 cqe ，并更新 cq_cache_tail 
+	io_commit_cqring(ctx);                           // 提交 cqe ，更新 cq_tail 和 cq_cache_tail 一致
 	spin_unlock_irqrestore(&ctx->completion_lock, flags);
 
 	io_cqring_ev_posted(ctx);
@@ -973,11 +978,25 @@ static void kiocb_end_write(struct io_kiocb *req)
 	file_end_write(req->file);
 }
 
+// @wbl    calculate diff time
+long get_diff_time(struct io_kiocb *req)
+{
+	long long start_time,end_time;
+	getnstimeofday(&req->end_time);
+
+	start_time = req->start_time.tv_sec * 1000000000 +  req->start_time.tv_nsec;
+	end_time = req->end_time.tv_sec * 1000000000 +  req->end_time.tv_nsec;
+
+	return end_time - start_time;
+}
+
 static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
 	req->user_data = kiocb->back_info;       // @wbl    kiocb -> io_kiocb
+
+	res = get_diff_time(req);                // @wbl  res <-  request_deal_time
 
 	printk("------------req(io_kiocb)->user_data: %d\n",(int)req->user_data);
 
@@ -986,7 +1005,8 @@ static void io_complete_rw(struct kiocb *kiocb, long res, long res2)
 
 	if ((req->flags & REQ_F_LINK) && res != req->result)
 		req->flags |= REQ_F_FAIL_LINK;
-	io_cqring_add_event(req->ctx, req->user_data, res);
+
+	io_cqring_add_event(req->ctx, req->user_data, res);        
 	io_put_req(req);
 }
 
@@ -994,7 +1014,9 @@ static void io_complete_rw_iopoll(struct kiocb *kiocb, long res, long res2)
 {
 	struct io_kiocb *req = container_of(kiocb, struct io_kiocb, rw);
 
-	// req->user_data = kiocb->back_info;       // @wbl    kiocb -> io_kiocb
+	req->user_data = kiocb->back_info;       // @wbl    kiocb -> io_kiocb
+
+	res = get_diff_time(req);                // @wbl  res <-  request_deal_time 
 
 	if (kiocb->ki_flags & IOCB_WRITE)
 		kiocb_end_write(req);
@@ -2127,12 +2149,15 @@ static int io_req_defer(struct io_ring_ctx *ctx, struct io_kiocb *req,
 	return -EIOCBQUEUED;
 }
 
+
 static int __io_submit_sqe(struct io_ring_ctx *ctx, struct io_kiocb *req,
 			   const struct sqe_submit *s, bool force_nonblock)
 {
 	int ret;
 
 	req->user_data = READ_ONCE(s->sqe->user_data);
+
+	getnstimeofday(&req->start_time);            // @wbl     io_kiocb -> start_time
 
 	if (unlikely(s->index >= ctx->sq_entries))
 		return -EINVAL;
@@ -2658,7 +2683,7 @@ err:
 		INIT_LIST_HEAD(&req->link_list);
 		*link = req;
 	} else {
-		io_queue_sqe(ctx, req, s);
+		io_queue_sqe(ctx, req, s);       // key func
 	}
 }
 
@@ -2758,10 +2783,10 @@ static int io_submit_sqes(struct io_ring_ctx *ctx, unsigned int nr,
 		statep = &state;
 	}
 
-	for (i = 0; i < nr; i++) {
+	for (i = 0; i < nr; i++) {                  // nr : number
 		struct sqe_submit s;
 
-		if (!io_get_sqring(ctx, &s))
+		if (!io_get_sqring(ctx, &s))            // get a sqe , and fill it in s(sqe_submit）
 			break;
 
 		/*
@@ -2794,7 +2819,7 @@ out:
 			s.has_user = has_user;
 			s.needs_lock = true;
 			s.needs_fixed_file = true;
-			io_submit_sqe(ctx, &s, statep, &link);
+			io_submit_sqe(ctx, &s, statep, &link);            // key func
 			submitted++;
 		}
 	}
@@ -2921,7 +2946,7 @@ static int io_sq_thread(void *data)
 
 		to_submit = min(to_submit, ctx->sq_entries);
 		inflight += io_submit_sqes(ctx, to_submit, cur_mm != NULL,
-					   mm_fault);
+					   mm_fault);               // key func
 
 		/* Commit SQ ring head once we've consumed all SQEs */
 		io_commit_sqring(ctx);

@@ -143,7 +143,7 @@ static inline void bio_issue_init(struct bio_issue *issue,
  */
 struct bio {
 	struct bio		*bi_next;	/* request queue link */
-	struct gendisk		*bi_disk;
+	struct gendisk		*bi_disk;   /*@wbl device info*/
 	unsigned int		bi_opf;		/* bottom bits req flags,
 						 * top bits REQ_OP. Use
 						 * accessors.
@@ -154,7 +154,7 @@ struct bio {
 	blk_status_t		bi_status;
 	u8			bi_partno;
 
-	struct bvec_iter	bi_iter;
+	struct bvec_iter	bi_iter;        // @wbl sector info
 
 	atomic_t		__bi_remaining;
 	bio_end_io_t		*bi_end_io;           // 回调函数
